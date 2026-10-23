@@ -86,7 +86,7 @@ class Profile extends BaseController
                 $newName = 'qris_' . uniqid() . '.' . $file->getExtension();
                 
                 // Create directory if not exists
-                $uploadDir = WRITEPATH . 'uploads/qris/';
+                $uploadDir = FCPATH . 'uploads/qris/';
                 if (!is_dir($uploadDir)) {
                     mkdir($uploadDir, 0755, true);
                 }
