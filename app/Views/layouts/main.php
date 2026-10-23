@@ -22,12 +22,25 @@
     <header class="bg-white shadow-sm">
         <div class="container mx-auto px-4 py-4">
             <div class="flex justify-between items-center">
-                <h1 class="text-xl font-bold text-blue-600">InvoiseLokalis</h1>
+                <h1 class="text-xl font-bold text-blue-600"><a href="/" class="hover:text-blue-700 transition-colors">InvoiseLokalis</a></h1>
                 <nav>
                     <ul class="flex space-x-4">
-                        <li><a href="/" class="hover:text-blue-600 transition-colors">Beranda</a></li>
-                        <li><a href="/login" class="hover:text-blue-600 transition-colors">Login</a></li>
-                        <li><a href="/register" class="hover:text-blue-600 transition-colors">Daftar</a></li>
+                        <?php if (session()->get('user_id')): ?>
+                            <!-- Logged-in user nav -->
+                            <li><a href="/" class="hover:text-blue-600 transition-colors">Beranda</a></li>
+                            <li><a href="/profile" class="hover:text-blue-600 transition-colors">Profil</a></li>
+                            <li>
+                                <form action="/logout" method="get" class="inline">
+                                    <?= csrf_field() ?>
+                                    <button type="submit" class="text-slate-600 hover:text-red-600 transition-colors">Logout</button>
+                                </form>
+                            </li>
+                        <?php else: ?>
+                            <!-- Guest nav -->
+                            <li><a href="/" class="hover:text-blue-600 transition-colors">Beranda</a></li>
+                            <li><a href="/login" class="hover:text-blue-600 transition-colors">Login</a></li>
+                            <li><a href="/register" class="text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded transition-colors">Daftar</a></li>
+                        <?php endif; ?>
                     </ul>
                 </nav>
             </div>

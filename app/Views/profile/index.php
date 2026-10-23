@@ -10,6 +10,15 @@
         </div>
     <?php endif; ?>
     
+    <div class="mb-4 flex items-center gap-4">
+        <a href="/dashboard" class="text-blue-600 hover:text-blue-700 font-medium hover:underline">&larr; Kembali ke Dashboard</a>
+        <span class="text-slate-300">|</span>
+        <form action="/logout" method="get" class="inline">
+            <?= csrf_field() ?>
+            <button type="submit" class="text-red-500 hover:text-red-700 font-medium hover:underline">Logout</button>
+        </form>
+    </div>
+    
     <div class="bg-white rounded-lg shadow-md p-6 mb-6">
         <h3 class="text-xl font-semibold mb-4 text-slate-900">Informasi Bank</h3>
         

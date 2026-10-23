@@ -19,7 +19,7 @@ class Auth extends BaseController
             return redirect()->to('/dashboard');
         }
         
-        if ($this->request->getMethod() === 'post') {
+        if (strtolower($this->request->getMethod()) === 'post') {
             $validation = \Config\Services::validation();
             
             $validation->setRules([
@@ -70,7 +70,7 @@ class Auth extends BaseController
             return redirect()->to('/dashboard');
         }
         
-        if ($this->request->getMethod() === 'post') {
+        if (strtolower($this->request->getMethod()) === 'post') {
             $validation = \Config\Services::validation();
             
             $validation->setRules([

@@ -3,8 +3,20 @@
 <?php $this->section('content'); ?>
 <div class="max-w-4xl mx-auto">
     <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h1 class="text-2xl font-bold mb-2 text-slate-900">Selamat datang, <?= htmlspecialchars(session()->get('business_name')) ?>!</h1>
+        <div class="flex justify-between items-center mb-2">
+            <h1 class="text-2xl font-bold text-slate-900">Selamat datang, <?= htmlspecialchars(session()->get('business_name')) ?>!</h1>
+        </div>
         <p class="text-slate-700 mb-6">Berikut adalah daftar invoice yang telah Anda buat.</p>
+        
+        <!-- Quick links -->
+        <div class="mb-6 flex items-center gap-4">
+            <a href="/profile" class="text-blue-600 hover:text-blue-700 font-medium hover:underline">Kelola Profil & QRIS</a>
+            <span class="text-slate-300">|</span>
+            <form action="/logout" method="get" class="inline">
+                <?= csrf_field() ?>
+                <button type="submit" class="text-red-500 hover:text-red-700 font-medium hover:underline">Logout</button>
+            </form>
+        </div>
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div class="bg-blue-50 rounded-lg p-4 border border-blue-100">

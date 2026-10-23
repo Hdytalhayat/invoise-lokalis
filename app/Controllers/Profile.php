@@ -34,7 +34,7 @@ class Profile extends BaseController
 
     public function updateBank()
     {
-        if ($this->request->getMethod() === 'post') {
+        if (strtolower($this->request->getMethod()) === 'post') {
             $userId = session()->get('user_id');
             
             $validation = \Config\Services::validation();
@@ -65,7 +65,7 @@ class Profile extends BaseController
 
     public function uploadQris()
     {
-        if ($this->request->getMethod() === 'post') {
+        if (strtolower($this->request->getMethod()) === 'post') {
             $userId = session()->get('user_id');
             
             // Validate file upload
