@@ -21,3 +21,5 @@ invoiselokalis_technical_documentation.txt
 opencode.json
 /writable
 .env
+repomix-output.xml
+repomix.config.json
