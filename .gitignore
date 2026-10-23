@@ -16,3 +16,6 @@ application/logs/*
 !application/logs/index.html
 !application/logs/.htaccess
 /vendor/
+agents.md
+invoiselokalis_technical_documentation.txt
+opencode.json
