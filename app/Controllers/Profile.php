@@ -52,7 +52,7 @@ class Profile extends BaseController
             ];
             
             try {
-                $this->userModel->update($userData, $userId);
+                $this->userModel->update($userId, $userData);
                 
                 return redirect()->back()->with('success', 'Informasi bank berhasil diperbarui.');
             } catch (\Exception $e) {
@@ -100,7 +100,7 @@ class Profile extends BaseController
                 ];
                 
                 try {
-                    $this->userModel->update($userData, $userId);
+                    $this->userModel->update($userId, $userData);
                     
                     return redirect()->back()->with('success', 'Gambar QRIS berhasil diunggah.');
                 } catch (\Exception $e) {
