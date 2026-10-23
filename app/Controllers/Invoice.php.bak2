@@ -1,0 +1,299 @@
+<?php
+
+namespace App\Controllers;
+
+use App\Controllers\BaseController;
+use App\Models\Invoice;
+use App\Models\InvoiceItem;
+use App\Models\Client as ClientModel;
+
+class Invoice extends BaseController
+{
+    protected $invoiceModel;
+    protected $itemModel;
+    protected $clientModel;
+
+    public function __construct()
+    {
+        // Auth guard
+        if (!session()->get('user_id')) {
+            return redirect()->to('/login')->with('error', 'Silakan login terlebih dahulu.');
+        }
+
+        $this->invoiceModel = new Invoice();
+        $this->itemModel    = new InvoiceItem();
+        $this->clientModel  = new ClientModel();
+    }
+
+    // ====================== Dashboard / Index ======================
+    public function index()
+    {
+        $userId = session()->get('user_id');
+
+        // Fetch all invoices for user with client data joined via model
+        $invoices = $this->invoiceModel->where('user_id', $userId)->orderBy('created_at', 'DESC')->findAll();
+
+        // Summary stats
+        $totalAmount    = 0;
+        $pendingCount   = 0;
+        $paidCount      = 0;
+        $pendingAmount  = 0;
+        $paidAmount     = 0;
+
+        foreach ($invoices as $inv) {
+            $totalAmount += (float)$inv['total_amount'];
+            if ($inv['status'] === 'unpaid') {
+                $pendingCount++;
+                $pendingAmount += (float)$inv['total_amount'];
+            } elseif ($inv['status'] === 'paid') {
+                $paidCount++;
+                $paidAmount += (float)$inv['total_amount'];
+            }
+        }
+
+        // Enrich with client names for display
+        $enriched = [];
+        foreach ($invoices as $inv) {
+            $client = $this->clientModel->find($inv['client_id']);
+            $enriched[] = [
+                'invoice'  => $inv,
+                'clientName' => $client ? htmlspecialchars($client['client_name']) : '-',
+            ];
+        }
+
+        return view('invoices/index', [
+            'invoices'      => $enriched,
+            'totalAmount'   => $totalAmount,
+            'pendingCount'  => $pendingCount,
+            'paidCount'     => $paidCount,
+            'pendingAmount' => $pendingAmount,
+            'paidAmount'    => $paidAmount,
+        ]);
+    }
+
+    // ====================== Create Invoice Form ======================
+    public function create()
+    {
+        // Load existing clients
+        $clients = $this->clientModel
+            ->where('user_id', session()->get('user_id'))
+            ->findAll();
+
+        return view('invoices/create', [
+            'clients' => $clients,
+            'errors'  => [],
+            'oldInput'=> old(), // CodeIgniter-HTTP helper's old() if available, else fallback
+        ]);
+    }
+
+    // ====================== Store Invoice (with transaction) ======================
+    public function store()
+    {
+        if (strtolower($this->request->getMethod()) !== 'post') {
+            return redirect()->back();
+        }
+
+        $userId = session()->get('user_id');
+        $post   = $this->request->getPost();
+
+        // ---- Client handling: use existing or create new inline ----
+        $clientId = (int)($post['client_id'] ?? 0);
+
+        if ($clientId > 0) {
+            // Use existing client — verify ownership
+            $existingClient = $this->clientModel->where('id', $clientId)->where('user_id', $userId)->first();
+            if (!$existingClient) {
+                return redirect()->back()->withInput()->with('error', 'Klien tidak ditemukan atau milik Anda.');
+            }
+        } else {
+            // Validate inline client fields
+            $clientName  = trim($post['client_name']  ?? '');
+            $clientPhone = trim($post['client_phone'] ?? '');
+
+            if (empty($clientName) || empty($clientPhone)) {
+                return redirect()->back()->withInput()->with('error', 'Nama klien dan nomor WA wajib diisi.');
+            }
+
+            // Insert new client
+            try {
+                $clientId = $this->clientModel->insert([
+                    'user_id'      => $userId,
+                    'client_name'  => $clientName,
+                    'client_phone' => $clientPhone,
+                    'client_email' => trim($post['client_email'] ?? '') ?: null,
+                ]);
+
+                if (!$clientId) {
+                    return redirect()->back()->withInput()->with('error', 'Gagal menyimpan data klien.');
+                }
+            } catch (\Exception $e) {
+                return redirect()->back()->withInput()->with('error', 'Gagal menyimpan data klien. Silakan coba lagi.');
+            }
+        }
+
+        // ---- Items & total ----
+        $descriptions = $post['item_description'] ?? [];
+        $prices       = $post['item_price']     ?? [];
+        $itemsToSave  = [];
+        $totalAmount  = 0;
+
+        for ($i = 0; $i < count($descriptions); $i++) {
+            $desc = trim((string)$descriptions[$i]);
+            $priceStr = trim((string)($prices[$i] ?? '0'));
+            // Strip currency formatting: dots, commas, spaces, Rp prefix
+            $price = floatval(preg_replace('/[^\d]/', '', $priceStr));
+
+            if (!empty($desc) && $price > 0) {
+                $subtotal = $price; // quantity always 1 for simplicity
+                $itemsToSave[] = [
+                    'description' => $desc,
+                    'quantity'    => 1,
+                    'price'       => $price,
+                    'subtotal'    => $subtotal,
+                ];
+                $totalAmount += $subtotal;
+            }
+        }
+
+        if (empty($itemsToSave)) {
+            return redirect()->back()->withInput()->with('error', 'Minimal satu item dengan deskripsi dan harga wajib ditambahkan.');
+        }
+
+        // ---- Due date validation ----
+        $dueDate = $post['due_date'] ?? '';
+        if (!empty($dueDate) && !date_parse($dueDate)['error_count']) {
+            $dueDate = date('Y-m-d', strtotime($dueDate));
+        } else {
+            // Default: 30 days from now
+            $dueDate = date('Y-m-d', strtotime('+30 days'));
+        }
+
+        // ---- Generate invoice code ----
+        $invoiceCode = 'INV-' . strtoupper(substr(md5(time() . random_int(1000, 9999)), 0, 12));
+
+        // ---- DB Transaction ----
+        try {
+            helper('database');
+            $db = \Config\Database::connect();
+            $db->transStart();
+
+            // Insert invoice row
+            $invoiceId = $this->invoiceModel->insert([
+                'invoice_code' => $invoiceCode,
+                'user_id'      => $userId,
+                'client_id'    => $clientId,
+                'total_amount' => $totalAmount,
+                'status'       => 'unpaid',
+                'due_date'     => $dueDate,
+            ]);
+
+            if (!$invoiceId) {
+                throw new \RuntimeException('Insert invoice gagal.');
+            }
+
+            // Insert items via raw SQL in transaction (insertBatch may not be wrapped by transStart in older CI4)
+            foreach ($itemsToSave as &$item) {
+                $item['invoice_id'] = $invoiceId;
+            }
+            $this->itemModel->insertBatch($itemsToSave);
+
+            $db->transComplete();
+
+            if ($db->transStatus() === false) {
+                throw new \RuntimeException('Transaksi invoice batal.');
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Invoice store error: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Gagal menyimpan invoice. Silakan coba lagi.');
+        }
+
+        //$trans = $db->transStatus();
+        
+        // Commit is automatic in CI4 transStart/Complete when status is true
+        
+                // ---- Redirect with success message 
+        return redirect()->to('/dashboard')->with('success', "Invoice {$invoiceCode} berhasil dibuat!");
+    }
+
+    // ====================== Update Status (one-click toggle) ======================
+    public function updateStatus($id)
+    {
+        if (strtolower($this->request->getMethod()) !== 'post') {
+            return redirect()->back();
+        }
+
+        $userId = session()->get('user_id');
+        $invoice = $this->invoiceModel
+            ->where('id', $id)
+            ->where('user_id', $userId)
+            ->first();
+
+        if (!$invoice) {
+            return redirect()->back()->with('error', 'Invoice tidak ditemukan.');
+        }
+
+        // Toggle: unpaid → paid, paid → unpaid
+        $newStatus = ($invoice['status'] === 'unpaid') ? 'paid' : 'unpaid';
+
+        try {
+            $this->invoiceModel->update($id, ['status' => $newStatus]);
+        } catch (\Exception $e) {
+            log_message('error', 'Update status gagal: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal memperbarui status invoice.');
+        }
+
+        $msg = ($newStatus === 'paid') ? 'Invoice ditandai Lunas.' : 'Invoice diubah menjadi Belum Dibayar.';
+        return redirect()->back()->with('success', $msg);
+    }
+
+    // ====================== WhatsApp Link Generator ======================
+    public function sendWhatsApp($id)
+    {
+        if (strtolower($this->request->getMethod()) !== 'post') {
+            return redirect()->back();
+        }
+
+        $userId = session()->get('user_id');
+        $invoice = $this->invoiceModel
+            ->where('id', $id)
+            ->where('user_id', $userId)
+            ->first();
+
+        if (!$invoice) {
+            return redirect()->back()->with('error', 'Invoice tidak ditemukan.');
+        }
+
+        $client = $this->clientModel->find($invoice['client_id']);
+        $phone  = $client ? ($client['client_phone'] ?? '') : '';
+        
+        if (empty($phone)) {
+            return redirect()->back()->with('error', 'Nomor WA klien belum diatur. Tidak dapat mengirim pesan.');
+        }
+
+        // Normalize: ensure +62 prefix for Indonesian numbers
+        $phone = ltrim($phone, '+0');
+        if (substr($phone, 0, 3) !== '62') {
+            $phone = '62' . ltrim($phone, '0');
+        }
+
+        // Build WhatsApp API URL
+        $publicUrl = site_url('i/' . $invoice['invoice_code']);
+        
+        $dateFmt = date_create($invoice['due_date']) 
+                   ? date_format(date_create($invoice['due_date']), 'd/m/Y') 
+                   : '-';
+
+        $message = rawurlencode(
+            "*Tagihan Invoice*\n"
+          . "No. Invoice: {$invoice['invoice_code']}\n"
+          . "Total: Rp " . number_format((int)$invoice['total_amount'], 0, ',', '.') . "\n"
+          . "Jatuh Tempo: {$dateFmt}\n"
+          . "Link Pembayaran: {$publicUrl}\n\n"
+          . "Mohon segera melakukan pembayaran. Terima kasih."
+        );
+
+        $waUrl = "https://wa.me/{$phone}?text={$message}";
+        return redirect()->to($waUrl);
+    }
+}

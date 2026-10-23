@@ -58,7 +58,7 @@ class CreateInvoicesTable extends Migration
         
         $this->forge->addKey('id', true);
         $this->forge->addForeignKey('user_id', 'users', 'id', 'CASCADE', 'CASCADE');
-        $this->forge->addForeignKey('client_id', 'clients', 'id', 'CASCADE', 'CASCADE');
+        // client_id FK added separately (after clients table exists)
         $this->forge->createTable('invoices');
         
         $this->db->enableForeignKeyChecks();
