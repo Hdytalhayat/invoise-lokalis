@@ -19,3 +19,5 @@ application/logs/*
 agents.md
 invoiselokalis_technical_documentation.txt
 opencode.json
+/writable
+.env
