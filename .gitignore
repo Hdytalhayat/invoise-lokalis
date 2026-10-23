@@ -23,3 +23,7 @@ opencode.json
 .env
 repomix-output.xml
 repomix.config.json
+
+public/uploads/*
+!public/uploads/.gitkeep
+
