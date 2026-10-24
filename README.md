@@ -50,7 +50,7 @@ Built with **CodeIgniter 4**, **PHP 8.2+**, **MySQL/MariaDB**, and **Tailwind CS
 
 ```bash
 # 1. Clone the repository
-git clone <your-repo-url> invoise-lokalis
+git clone https://github.com/Hdytalhayat/invoise-lokalis invoise-lokalis
 cd invoise-lokalis
 
 # 2. Install dependencies
