@@ -4,7 +4,7 @@ namespace App\Controllers;
 
 class Home extends BaseController
 {
-    public function index(): string
+    public function index(): string|\CodeIgniter\HTTP\ResponseInterface
     {
         // Redirect logged-in users to dashboard
         if (session()->get('user_id')) {
