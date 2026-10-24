@@ -125,4 +125,22 @@ class Session extends BaseConfig
      * seconds.
      */
     public int $lockMaxRetries = 300;
+
+    public function __construct()
+    {
+        parent::__construct();
+
+        // Allow session driver / save path to be configured via environment
+        // (e.g. for InfinityFree production deployment).
+        $driver   = env('app.sessionDriver');
+        $savePath = env('app.sessionSavePath');
+
+        if (is_string($driver) && $driver !== '') {
+            $this->driver = $driver;
+        }
+
+        if (is_string($savePath) && $savePath !== '') {
+            $this->savePath = $savePath;
+        }
+    }
 }
