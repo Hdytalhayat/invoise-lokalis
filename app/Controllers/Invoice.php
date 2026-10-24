@@ -4,24 +4,22 @@ namespace App\Controllers;
 
 use App\Controllers\BaseController;
 use CodeIgniter\HTTP\ResponseInterface;
+use CodeIgniter\Exceptions\PageNotFoundException;
 use App\Models\Invoice as InvoiceModel;
 use App\Models\InvoiceItem as ItemModel;
 use App\Models\Client as ClientModel;
+use App\Models\User as UserModel;
 
 class Invoice extends BaseController
 {
-    protected $invoiceModel, $itemModel, $clientModel;
+    protected $invoiceModel, $itemModel, $clientModel, $userModel;
 
     public function __construct()
     {
-        // Auth guard
-        if (!session()->get('user_id')) {
-            return redirect()->to('/login')->with('error', 'Silakan login terlebih dahulu.');
-        }
-
         $this->invoiceModel = new InvoiceModel();
         $this->itemModel    = new ItemModel();
         $this->clientModel  = new ClientModel();
+        $this->userModel    = new UserModel();
     }
 
     /* ─────────────────── Dashboard / Index ─────────────────── */
@@ -287,5 +285,62 @@ class Invoice extends BaseController
 
         $waUrl = "https://wa.me/{$phone}?text={$message}";
         return redirect()->to($waUrl);
+    }
+
+    /* ─────────────── Public Invoice View (no auth) ─────────── */
+    public function viewPublic($invoiceCode = null)
+    {
+        if (empty($invoiceCode)) {
+            throw PageNotFoundException::forPageNotFound();
+        }
+
+        $invoice = $this->invoiceModel
+            ->where('invoice_code', $invoiceCode)
+            ->first();
+
+        if (! $invoice) {
+            throw PageNotFoundException::forPageNotFound();
+        }
+
+        $client = $this->clientModel->find($invoice['client_id']);
+        $items  = $this->itemModel
+            ->where('invoice_id', $invoice['id'])
+            ->findAll();
+        $owner  = $this->userModel->find($invoice['user_id']);
+
+        // Normalize owner phone for wa.me
+        $ownerPhone = $owner ? ($owner['phone_number'] ?? '') : '';
+        $ownerPhone = ltrim($ownerPhone, '+0');
+        $ownerPhone = (substr($ownerPhone, 0, 2) === '62') ? $ownerPhone : '62' . ltrim($ownerPhone, '0');
+
+        $status = $invoice['status'] ?? 'unpaid';
+        $statusLabel = 'Belum Dibayar';
+        $statusCls   = 'bg-amber-100 text-amber-800';
+        if ($status === 'paid') {
+            $statusLabel = 'Lunas';
+            $statusCls   = 'bg-emerald-100 text-emerald-800';
+        } elseif ($status === 'overdue') {
+            $statusLabel = 'Jatuh Tempo';
+            $statusCls   = 'bg-red-100 text-red-800';
+        }
+
+        $confirmMsg = rawurlencode(
+            "Halo, saya sudah melakukan pembayaran untuk invoice {$invoice['invoice_code']} "
+            . "sebesar Rp " . number_format((int)$invoice['total_amount'], 0, ',', '.') . ". "
+            . "Mohon dikonfirmasi. Terima kasih."
+        );
+        $confirmUrl = ! empty($ownerPhone)
+            ? "https://wa.me/{$ownerPhone}?text={$confirmMsg}"
+            : null;
+
+        return view('invoice/public_view', [
+            'invoice'     => $invoice,
+            'client'      => $client,
+            'items'       => $items,
+            'owner'       => $owner,
+            'statusLabel' => $statusLabel,
+            'statusCls'   => $statusCls,
+            'confirmUrl'  => $confirmUrl,
+        ]);
     }
 }

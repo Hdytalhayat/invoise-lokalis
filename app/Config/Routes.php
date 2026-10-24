@@ -12,6 +12,9 @@ $routes->get('/register', 'Auth::register');
 $routes->post('/register','Auth::register');
 $routes->get('/logout',   'Auth::logout');
 
+// ───────── Public invoice view (no auth) ─────────
+$routes->get('/i/(:segment)', 'Invoice::viewPublic/$1');
+
 // ───────── Protected routes (authFilter applied) ─────────
 $routes->group('', ['filter' => 'auth'], static function ($routes) {
 
