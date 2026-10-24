@@ -26,18 +26,18 @@ class InvoiceItem extends Model
     protected array $casts = [];
     protected array $castHandlers = [];
 
-    // Dates
-    protected $useTimestamps = true;
+    // Dates (invoice_items has no timestamp columns)
+    protected $useTimestamps = false;
     protected $dateFormat    = 'datetime';
-    protected $createdField  = 'created_at';
-    protected $updatedField  = 'updated_at';
+    protected $createdField  = '';
+    protected $updatedField  = '';
     protected $deletedField  = 'deleted_at';
 
     // Validation
     protected $validationRules      = [
         'invoice_id' => 'required|numeric',
         'description' => 'required|max_length[255]',
-        'quantity' => 'required|numeric|min[1]',
+        'quantity' => 'required|numeric|greater_than_equal_to[1]',
         'price' => 'required|numeric',
         'subtotal' => 'required|numeric'
     ];
@@ -53,7 +53,7 @@ class InvoiceItem extends Model
         'quantity' => [
             'required' => 'Jumlah wajib diisi',
             'numeric' => 'Jumlah harus berupa angka',
-            'min' => 'Jumlah minimal 1'
+            'greater_than_equal_to' => 'Jumlah minimal 1'
         ],
         'price' => [
             'required' => 'Harga wajib diisi',

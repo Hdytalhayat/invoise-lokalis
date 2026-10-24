@@ -92,7 +92,7 @@
                             ?>
                             <tr class="hover:bg-slate-50 transition-colors">
                                 <!-- Invoice Number -->
-                                <td class="px-4 py-3 font-medium text-slate-900><?= htmlspecialchars($inv['invoice_code']) ?></td>
+                                <td class="px-4 py-3 font-medium text-slate-900"><?= htmlspecialchars($inv['invoice_code']) ?></td>
 
                                 <!-- Client Name -->
                                 <td class="px-4 py-3 text-slate-700"><?= $clientName ?></td>

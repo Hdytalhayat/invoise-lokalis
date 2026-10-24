@@ -52,6 +52,9 @@
         <?= $this->renderSection('content') ?>
     </main>
 
+    <!-- Page-specific scripts -->
+    <?= $this->renderSection('scripts') ?>
+
     <!-- Footer -->
     <footer class="bg-white border-t mt-12 py-6">
         <div class="container mx-auto px-4 text-center text-slate-600 text-sm">
