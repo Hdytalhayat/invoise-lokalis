@@ -1,0 +1,13 @@
+.git
+.github
+vendor
+node_modules
+writable/cache/*
+writable/debugbar/*
+writable/logs/*
+writable/session/*
+writable/uploads/*
+.env
+tests
+*.md
+repomix-output.xml

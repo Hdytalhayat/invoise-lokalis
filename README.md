@@ -163,3 +163,26 @@ database.default.port     = 3306
 ## 📄 License
 
 MIT
+
+## ?? Running with Docker
+
+A ready-to-use Docker setup is provided (`Dockerfile`, `docker-compose.yml`).
+
+1. Make sure Docker and Docker Compose are installed.
+2. (Optional) tweak `.env.docker` (database credentials, base URL, etc.).
+3. Build and start the stack:
+
+   ```bash
+   docker compose up -d --build
+   ```
+
+4. Open the app at http://localhost:8080 and phpMyAdmin at http://localhost:8081.
+5. Migrations run automatically on first start.
+
+Stop the stack with:
+
+```bash
+docker compose down
+```
+
+Persistent volumes are used for the database, `vendor/`, and `writable/`.
